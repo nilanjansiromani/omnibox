@@ -5,6 +5,7 @@ A beautiful, liquid glass-styled browser extension that provides instant access 
 ![SuperOmniBar](https://img.shields.io/badge/version-1.0.0-blue)
 ![Chrome](https://img.shields.io/badge/Chrome-supported-green)
 ![Firefox](https://img.shields.io/badge/Firefox-supported-green)
+![Arc](https://img.shields.io/badge/Arc-supported-green)
 
 ## ✨ Features
 
@@ -61,6 +62,21 @@ A beautiful, liquid glass-styled browser extension that provides instant access 
 6. The extension is now installed and ready to use!
 
 **Note**: For Firefox, temporary add-ons are removed when you restart Firefox. To make it permanent, you'll need to sign and publish the extension, or use Firefox Developer Edition with permanent installation options.
+
+### Arc Browser
+
+1. **Download or Clone** this repository
+2. Open Arc and navigate to `arc://extensions/`
+3. Enable **"Developer mode"** (toggle in the top right corner)
+4. Click **"Load unpacked"**
+5. Select the `arc/` directory from this repository
+6. The extension is now installed and ready to use!
+
+**Arc-Specific Features**: The Arc version includes enhanced support for:
+- Searching tabs across all Arc spaces
+- Including pinned tabs (marked with 📌)
+- Searching sidebar tabs
+- Full history and bookmark search
 
 ## 🎯 Usage
 
@@ -125,6 +141,18 @@ SuperOmniBar/
 │   │   ├── icon-48.png
 │   │   └── icon-128.png
 │   └── README.md              # Firefox-specific notes
+│
+├── arc/                       # Arc browser extension
+│   ├── manifest.json          # Extension configuration
+│   ├── background.js          # Service worker (Arc-optimized)
+│   ├── content.js             # Content script (UI overlay)
+│   ├── fuzzy-search.js        # Search algorithm
+│   ├── styles.css             # Liquid glass styling
+│   ├── icons/                 # Extension icons
+│   │   ├── icon-16.png
+│   │   ├── icon-48.png
+│   │   └── icon-128.png
+│   └── README.md              # Arc-specific notes
 │
 └── README.md                  # This file
 ```
