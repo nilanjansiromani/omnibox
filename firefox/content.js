@@ -61,24 +61,33 @@
     });
   }
   
-  // Handle keyboard shortcuts
+  // Handle keyboard shortcuts - use capture phase to catch before other handlers
   document.addEventListener('keydown', (e) => {
     // Check for Ctrl+K or Cmd+K
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      e.stopPropagation();
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      // Only prevent default if we're going to handle it
+      if (!isOpen || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+      
       if (isOpen) {
         closeOverlay();
       } else {
         openOverlay();
       }
+      return false;
     }
     
     // Close on Escape
     if (e.key === 'Escape' && isOpen) {
+      e.preventDefault();
+      e.stopPropagation();
       closeOverlay();
+      return false;
     }
-  });
+  }, true); // Use capture phase to intercept early
   
   async function openOverlay() {
     if (!overlay) {
@@ -144,12 +153,18 @@
     }
     
     // Perform search immediately if empty query, otherwise debounce
+    // Require minimum 3 characters for search
     if (!query) {
       performSearch(query);
-    } else {
+    } else if (query.length >= 3) {
       debounceTimer = setTimeout(() => {
         performSearch(query);
       }, 300);
+    } else {
+      // Show empty state if less than 3 characters
+      currentResults = [];
+      selectedIndex = -1;
+      updateResultsDisplay();
     }
   }
   
@@ -162,13 +177,18 @@
     let bookmarkResults = [];
     let historyResults = [];
     
-    if (query) {
+    if (query && query.length >= 3) {
       tabResults = FuzzySearch.search(tabs, query, (item) => `${item.title} ${item.url}`);
       bookmarkResults = FuzzySearch.search(bookmarks, query, (item) => `${item.title} ${item.url}`);
       historyResults = FuzzySearch.search(history, query, (item) => `${item.title} ${item.url}`);
+      
+      // Limit to top 5 results per category
+      tabResults = tabResults.slice(0, 5);
+      bookmarkResults = bookmarkResults.slice(0, 5);
+      historyResults = historyResults.slice(0, 5);
     } else {
-      // Show all tabs when query is empty (no limit)
-      tabResults = tabs.map(item => ({ item, score: 1 }));
+      // Show top 5 tabs when query is empty
+      tabResults = tabs.slice(0, 5).map(item => ({ item, score: 1 }));
       bookmarkResults = [];
       historyResults = [];
     }
@@ -193,12 +213,17 @@
   
   function updateResultsDisplay() {
     const results = currentResults;
+    const currentQuery = searchInput ? searchInput.value.trim() : '';
     
     if (results.length === 0) {
       if (resultsContainer.querySelector('.super-omnibar-empty')) {
         return; // Already showing empty state
       }
-      resultsContainer.innerHTML = '<div class="super-omnibar-empty">No results found</div>';
+      let emptyMessage = 'No results found';
+      if (currentQuery.length > 0 && currentQuery.length < 3) {
+        emptyMessage = 'Type at least 3 characters to search';
+      }
+      resultsContainer.innerHTML = `<div class="super-omnibar-empty">${emptyMessage}</div>`;
       return;
     }
     
@@ -257,17 +282,27 @@
   }
   
   function getResultItemHTML(result, index) {
-    const faviconUrl = result.favIconUrl && result.favIconUrl.startsWith('http') 
-      ? result.favIconUrl 
-      : `chrome://favicon/${result.url}`;
-    const fallbackIcon = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath fill=\'%23999\' d=\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z\'/%3E%3C/svg%3E';
+    // Default favicon emoji
+    const defaultFaviconEmoji = '🗂️';
+    
+    let faviconHtml = '';
+    if (result.favIconUrl && result.favIconUrl.startsWith('http')) {
+      // Use actual favicon if available
+      faviconHtml = `<img src="${result.favIconUrl}" alt="" class="super-omnibar-favicon" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
+    } else if (result.url && !result.url.startsWith('about:') && !result.url.startsWith('moz-extension://')) {
+      // Try chrome://favicon/ API
+      faviconHtml = `<img src="chrome://favicon/${result.url}" alt="" class="super-omnibar-favicon" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
+    }
+    
+    // Always include emoji fallback (hidden by default if image loads)
+    faviconHtml += `<span class="super-omnibar-favicon-emoji" style="display: ${faviconHtml ? 'none' : 'inline-block'};">${defaultFaviconEmoji}</span>`;
     
     const query = result.searchQuery || '';
     const highlightedTitle = highlightMatches(result.title, query);
     const highlightedUrl = highlightMatches(result.url, query);
     
     return `
-      <img src="${faviconUrl}" alt="" class="super-omnibar-favicon" onerror="this.src='${fallbackIcon}'">
+      ${faviconHtml}
       <div class="super-omnibar-result-content">
         <div class="super-omnibar-result-title">${highlightedTitle}</div>
         <div class="super-omnibar-result-url">${highlightedUrl}</div>
@@ -407,10 +442,25 @@
   browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'openOmnibar') {
       openOverlay();
+      sendResponse({ success: true });
     }
     if (request.action === 'ping') {
       sendResponse({ pong: true });
     }
+    return true; // Indicates we will send a response asynchronously
   });
+  
+  // Also listen for keyboard shortcut from window (for better compatibility)
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isOpen) {
+        closeOverlay();
+      } else {
+        openOverlay();
+      }
+    }
+  }, true);
 })();
 

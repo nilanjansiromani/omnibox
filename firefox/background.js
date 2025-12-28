@@ -78,11 +78,25 @@ browserAPI.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 // Handle keyboard shortcut command
 browserAPI.commands.onCommand.addListener((command) => {
   if (command === 'open-omnibar') {
-    // Send message to the active tab to open the omnibar
-    browserAPI.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        browserAPI.tabs.sendMessage(tabs[0].id, { action: 'openOmnibar' }).catch(() => {
-          // Ignore errors for tabs that don't have content script loaded yet
+    // Send message to all tabs to ensure it works (some browsers need this)
+    browserAPI.tabs.query({}, (allTabs) => {
+      // Try active tab first
+      const activeTab = allTabs.find(tab => tab.active);
+      if (activeTab) {
+        browserAPI.tabs.sendMessage(activeTab.id, { action: 'openOmnibar' }).catch(() => {
+          // If that fails, try all tabs
+          allTabs.forEach(tab => {
+            if (tab.url && !tab.url.startsWith('about:') && !tab.url.startsWith('moz-extension://')) {
+              browserAPI.tabs.sendMessage(tab.id, { action: 'openOmnibar' }).catch(() => {});
+            }
+          });
+        });
+      } else {
+        // Fallback: try all tabs
+        allTabs.forEach(tab => {
+          if (tab.url && !tab.url.startsWith('about:') && !tab.url.startsWith('moz-extension://')) {
+            browserAPI.tabs.sendMessage(tab.id, { action: 'openOmnibar' }).catch(() => {});
+          }
         });
       }
     });

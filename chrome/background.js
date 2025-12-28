@@ -68,11 +68,25 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 // Handle keyboard shortcut command
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'open-omnibar') {
-    // Send message to the active tab to open the omnibar
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'openOmnibar' }).catch(() => {
-          // Ignore errors for tabs that don't have content script loaded yet
+    // Send message to all tabs to ensure it works (some browsers like Arc need this)
+    chrome.tabs.query({}, (allTabs) => {
+      // Try active tab first
+      const activeTab = allTabs.find(tab => tab.active);
+      if (activeTab) {
+        chrome.tabs.sendMessage(activeTab.id, { action: 'openOmnibar' }).catch(() => {
+          // If that fails, try all tabs
+          allTabs.forEach(tab => {
+            if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+              chrome.tabs.sendMessage(tab.id, { action: 'openOmnibar' }).catch(() => {});
+            }
+          });
+        });
+      } else {
+        // Fallback: try all tabs
+        allTabs.forEach(tab => {
+          if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+            chrome.tabs.sendMessage(tab.id, { action: 'openOmnibar' }).catch(() => {});
+          }
         });
       }
     });
