@@ -141,24 +141,14 @@ async function getTabs() {
       id: tab.id,
       title: tab.title || tab.url,
       url: tab.url,
-      favIconUrl: tab.favIconUrl || getFaviconUrl(tab.url),
+      // Only use favIconUrl if it's a valid HTTP URL, otherwise leave empty for emoji fallback
+      favIconUrl: (tab.favIconUrl && tab.favIconUrl.startsWith('http')) ? tab.favIconUrl : '',
       type: 'tab'
     }));
   } catch (error) {
     console.error('Error getting tabs:', error);
     return [];
   }
-}
-
-/**
- * Get favicon URL (Firefox-compatible)
- */
-function getFaviconUrl(url) {
-  if (!url || url.startsWith('about:') || url.startsWith('moz-extension://')) {
-    return 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath fill=\'%23999\' d=\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z\'/%3E%3C/svg%3E';
-  }
-  // Firefox doesn't have chrome://favicon/, so use the page's favicon or a default
-  return `chrome://favicon/${url}`;
 }
 
 /**
@@ -175,7 +165,8 @@ async function getBookmarks() {
             id: node.id,
             title: node.title,
             url: node.url,
-            favIconUrl: getFaviconUrl(node.url),
+            // Leave favIconUrl empty - will use emoji fallback
+            favIconUrl: '',
             type: 'bookmark'
           });
         }
@@ -210,7 +201,8 @@ async function getHistory() {
       id: item.id,
       title: item.title || item.url,
       url: item.url,
-      favIconUrl: getFaviconUrl(item.url),
+      // Leave favIconUrl empty - will use emoji fallback
+      favIconUrl: '',
       type: 'history',
       visitCount: item.visitCount || 0,
       lastVisitTime: item.lastVisitTime || 0

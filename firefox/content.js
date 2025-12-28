@@ -285,17 +285,20 @@
     // Default favicon emoji
     const defaultFaviconEmoji = '🗂️';
     
+    // Check if we have a valid favicon URL
+    const hasValidFavicon = result.favIconUrl && 
+                            result.favIconUrl.startsWith('http') && 
+                            result.favIconUrl.length > 0 &&
+                            !result.favIconUrl.includes('data:image'); // Exclude data URIs that might be broken
+    
     let faviconHtml = '';
-    if (result.favIconUrl && result.favIconUrl.startsWith('http')) {
-      // Use actual favicon if available
-      faviconHtml = `<img src="${result.favIconUrl}" alt="" class="super-omnibar-favicon" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
-    } else if (result.url && !result.url.startsWith('about:') && !result.url.startsWith('moz-extension://')) {
-      // Try chrome://favicon/ API
-      faviconHtml = `<img src="chrome://favicon/${result.url}" alt="" class="super-omnibar-favicon" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">`;
+    if (hasValidFavicon) {
+      // Use actual favicon if available - with error handler to show emoji on failure
+      faviconHtml = `<img src="${result.favIconUrl}" alt="" class="super-omnibar-favicon" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" onload="this.nextElementSibling.style.display='none';">`;
     }
     
-    // Always include emoji fallback (hidden by default if image loads)
-    faviconHtml += `<span class="super-omnibar-favicon-emoji" style="display: ${faviconHtml ? 'none' : 'inline-block'};">${defaultFaviconEmoji}</span>`;
+    // Always include emoji fallback - show by default if no valid favicon
+    faviconHtml += `<span class="super-omnibar-favicon-emoji" style="display: ${hasValidFavicon ? 'none' : 'inline-block'};">${defaultFaviconEmoji}</span>`;
     
     const query = result.searchQuery || '';
     const highlightedTitle = highlightMatches(result.title, query);

@@ -131,7 +131,8 @@ async function getTabs() {
       id: tab.id,
       title: tab.title || tab.url,
       url: tab.url,
-      favIconUrl: tab.favIconUrl || `chrome://favicon/${tab.url}`,
+      // Only use favIconUrl if it's a valid HTTP URL, otherwise leave empty for emoji fallback
+      favIconUrl: (tab.favIconUrl && tab.favIconUrl.startsWith('http')) ? tab.favIconUrl : '',
       type: 'tab'
     }));
   } catch (error) {
@@ -154,7 +155,8 @@ async function getBookmarks() {
             id: node.id,
             title: node.title,
             url: node.url,
-            favIconUrl: `chrome://favicon/${node.url}`,
+            // Leave favIconUrl empty - will use emoji fallback
+            favIconUrl: '',
             type: 'bookmark'
           });
         }
@@ -189,7 +191,8 @@ async function getHistory() {
       id: item.id,
       title: item.title || item.url,
       url: item.url,
-      favIconUrl: `chrome://favicon/${item.url}`,
+      // Leave favIconUrl empty - will use emoji fallback
+      favIconUrl: '',
       type: 'history',
       visitCount: item.visitCount || 0,
       lastVisitTime: item.lastVisitTime || 0
